@@ -189,8 +189,7 @@ struct PriceChart: View {
             if let s = selected {
                 RuleMark(x: .value("Date", s.date))
                     .foregroundStyle(Theme.muted.opacity(0.6))
-                    .annotation(position: .top, spacing: 4,
-                                overflowResolution: .init(x: .fit(to: .chart), y: .disabled)) {
+                                          .annotation(position: .top, spacing: 4) {
                         Text("\(Fmt.shortDate.string(from: s.date))  \(Fmt.euro(s.price))")
                             .font(.system(size: 12, weight: .bold))
                             .foregroundStyle(Theme.text)
