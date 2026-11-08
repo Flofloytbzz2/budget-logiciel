@@ -1,0 +1,34 @@
+name: ObjectifPrix
+options:
+  bundleIdPrefix: com.objectifprix
+  deploymentTarget:
+    iOS: "16.0"
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "2.0"
+    CURRENT_PROJECT_VERSION: "1"
+targets:
+  ObjectifPrix:
+    type: application
+    platform: iOS
+    sources:
+      - ObjectifPrix
+    info:
+      path: ObjectifPrix/Info.plist
+      properties:
+        CFBundleDisplayName: Objectif Prix
+        UILaunchScreen: {}
+        UIBackgroundModes:
+          - fetch
+        BGTaskSchedulerPermittedIdentifiers:
+          - com.objectifprix.app.refresh
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        UIUserInterfaceStyle: Dark
+        ITSAppUsesNonExemptEncryption: false
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.objectifprix.app
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        TARGETED_DEVICE_FAMILY: "1"
