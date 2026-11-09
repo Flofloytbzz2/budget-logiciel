@@ -1,6 +1,18 @@
 import SwiftUI
 
 struct RootView: View {
+    var body: some View {
+        TabView {
+            GoalsTab()
+                .tabItem { Label("Objectifs", systemImage: "target") }
+            AccountView()
+                .tabItem { Label("Compte", systemImage: "person.crop.circle") }
+        }
+        .tint(Theme.accent)
+    }
+}
+
+struct GoalsTab: View {
     @EnvironmentObject var store: Store
     @State private var showNew = false
 
@@ -8,7 +20,7 @@ struct RootView: View {
         NavigationStack {
             ZStack {
                 AppBackground()
-                if store.goals.isEmpty {
+                if store.visibleGoals.isEmpty {
                     EmptyState { showNew = true }
                 } else {
                     list
@@ -39,7 +51,7 @@ struct RootView: View {
     private var list: some View {
         ScrollView {
             LazyVStack(spacing: 14) {
-                ForEach(store.goals) { goal in
+                ForEach(store.visibleGoals) { goal in
                     NavigationLink(value: goal.id) {
                         GoalCard(goal: goal)
                     }
@@ -49,7 +61,7 @@ struct RootView: View {
             .padding(16)
         }
         .refreshable {
-            for g in store.goals where !g.url.isEmpty {
+            for g in store.visibleGoals where !g.url.isEmpty {
                 _ = await store.refresh(g.id, manual: true)
             }
         }

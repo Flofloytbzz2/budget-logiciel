@@ -17,6 +17,13 @@ enum Trend {
     case down, up, flat, none
 }
 
+extension Date {
+    /// Maintenant, arrondi à la seconde (même précision que le fichier partagé avec le PC).
+    static var nowSeconds: Date {
+        Date(timeIntervalSince1970: floor(Date().timeIntervalSince1970))
+    }
+}
+
 struct Goal: Codable, Identifiable, Hashable {
     var id = UUID()
     var name: String
@@ -31,12 +38,24 @@ struct Goal: Codable, Identifiable, Hashable {
     var alertedPrice: Double?
     var history: [PricePoint] = []
     var log: [MoneyEntry] = []
+    var updatedAt: Date?      // dernière modification, sert à la synchro
+    var deleted: Bool?        // supprimé (la trace est gardée pour l'autre appareil)
 
     init(name: String, url: String, monthly: Double = 0, alertBelow: Double = 0) {
         self.name = name
         self.url = url
         self.monthly = monthly
         self.alertBelow = alertBelow
+        self.updatedAt = Date.nowSeconds
+    }
+
+    var stamp: Date { updatedAt ?? .distantPast }
+    var isDeleted: Bool { deleted ?? false }
+
+    /// Marque l'objectif comme modifié (toujours strictement plus récent que sa version précédente).
+    mutating func touch() {
+        let now = Date.nowSeconds
+        updatedAt = now > stamp ? now : stamp.addingTimeInterval(1)
     }
 
     var displayName: String { name.isEmpty ? "Sans nom" : name }
