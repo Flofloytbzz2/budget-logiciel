@@ -44,23 +44,37 @@ final class Store: ObservableObject {
 
     // MARK: - Objectifs
 
+    /// Les objectifs affichés (ceux supprimés restent dans `goals` pour la synchro).
+    var visibleGoals: [Goal] {
+        goals.filter { !$0.isDeleted }
+    }
+
     func goal(_ id: UUID) -> Goal? {
-        goals.first { $0.id == id }
+        goals.first { $0.id == id && !$0.isDeleted }
     }
 
     func add(_ goal: Goal) {
         goals.append(goal)
+        SyncService.shared.scheduleSync()
     }
 
     func delete(_ id: UUID) {
-        goals.removeAll { $0.id == id }
+        update(id) { $0.deleted = true }
     }
 
-    func update(_ id: UUID, _ body: (inout Goal) -> Void) {
+    /// `touch: false` pour les changements propres à cet appareil (dernière tentative, erreur…).
+    func update(_ id: UUID, touch: Bool = true, _ body: (inout Goal) -> Void) {
         guard let index = goals.firstIndex(where: { $0.id == id }) else { return }
         var copy = goals[index]
         body(&copy)
+        if touch { copy.touch() }
         goals[index] = copy
+        if touch { SyncService.shared.scheduleSync() }
+    }
+
+    /// Applique le résultat d'une synchro (sans relancer de synchro).
+    func applyRemote(_ merged: [Goal]) {
+        goals = merged
     }
 
     /// Retourne true si le lien a changé.
@@ -145,7 +159,7 @@ final class Store: ObservableObject {
         guard let g = goal(id), !g.url.isEmpty, !fetching.contains(id) else { return nil }
         fetching.insert(id)
         defer { fetching.remove(id) }
-        update(id) { $0.lastAttempt = Date() }
+        update(id, touch: false) { $0.lastAttempt = Date() }
 
         do {
             let result = try await PriceFetcher.fetch(urlString: g.url)
@@ -156,7 +170,7 @@ final class Store: ObservableObject {
             return nil
         } catch {
             let message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
-            update(id) { $0.lastError = message }
+            update(id, touch: false) { $0.lastError = message }
             return message
         }
     }
@@ -172,7 +186,7 @@ final class Store: ObservableObject {
     }
 
     func refreshDue() async {
-        for g in goals where !g.url.isEmpty && isDue(g) {
+        for g in visibleGoals where !g.url.isEmpty && isDue(g) {
             _ = await refresh(g.id, manual: false)
             try? await Task.sleep(nanoseconds: 2_000_000_000)
         }
@@ -221,7 +235,9 @@ enum BackgroundRefresh {
             }
             schedule()
             let work = Task { @MainActor in
+                await SyncService.shared.syncNow()
                 await Store.shared.refreshDue()
+                await SyncService.shared.syncNow()
                 refreshTask.setTaskCompleted(success: true)
             }
             refreshTask.expirationHandler = { work.cancel() }
