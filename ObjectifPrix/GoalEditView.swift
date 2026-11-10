@@ -118,11 +118,14 @@ struct GoalEditView: View {
             return
         }
         let cleanName = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        let cleanURL = url.trimmingCharacters(in: .whitespacesAndNewlines)
-        let lower = cleanURL.lowercased()
-        if !cleanURL.isEmpty && !(lower.hasPrefix("http://") || lower.hasPrefix("https://")) {
-            error = "Le lien doit commencer par http:// ou https://"
-            return
+        var cleanURL = url.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !cleanURL.isEmpty {
+            // accepte un lien collé avec du texte autour (bouton Partager) et retrouve l'adresse
+            guard let parsed = PriceFetcher.cleanURL(cleanURL) else {
+                error = "Je ne trouve pas d'adresse http:// ou https:// dans ce lien."
+                return
+            }
+            cleanURL = parsed.absoluteString
         }
         if cleanName.isEmpty && cleanURL.isEmpty {
             error = "Donne au moins un nom ou un lien."
