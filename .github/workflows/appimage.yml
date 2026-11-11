@@ -1,0 +1,84 @@
+name: AppImage Linux
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+    paths:
+      - "linux/**"
+      - ".github/workflows/appimage.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  appimage:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Dépendances
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3-tk tk librsvg2-bin libfuse2
+          python3 -m pip install pyinstaller
+
+      - name: Compiler avec PyInstaller
+        working-directory: linux
+        run: |
+          python3 -m PyInstaller --noconfirm --windowed --name objectif-prix objectif_prix.py
+
+      - name: Construire l'AppDir
+        working-directory: linux
+        run: |
+          rm -rf AppDir
+          mkdir -p AppDir/usr/lib AppDir/usr/share/icons/hicolor/256x256/apps
+          cp -r dist/objectif-prix AppDir/usr/lib/objectif-prix
+          python3 - <<'PY'
+          import re
+          src = open("objectif_prix.py", encoding="utf-8").read()
+          m = re.search(r'ICON_SVG = """(.*?)"""', src, re.S)
+          open("icon.svg", "w", encoding="utf-8").write(m.group(1))
+          PY
+          rsvg-convert -w 256 -h 256 icon.svg -o AppDir/objectif-prix.png
+          cp AppDir/objectif-prix.png AppDir/.DirIcon
+          cp AppDir/objectif-prix.png AppDir/usr/share/icons/hicolor/256x256/apps/objectif-prix.png
+          cat > AppDir/objectif-prix.desktop <<'DESK'
+          [Desktop Entry]
+          Type=Application
+          Name=Objectif Prix
+          Comment=Suis ton épargne vers l'article que tu veux
+          Exec=objectif-prix
+          Icon=objectif-prix
+          Terminal=false
+          Categories=Utility;Office;Finance;
+          StartupWMClass=Objectifprix
+          DESK
+          cat > AppDir/AppRun <<'RUN'
+          #!/bin/sh
+          HERE="$(dirname "$(readlink -f "$0")")"
+          exec "$HERE/usr/lib/objectif-prix/objectif-prix" "$@"
+          RUN
+          chmod +x AppDir/AppRun
+
+      - name: Créer l'AppImage
+        working-directory: linux
+        run: |
+          curl -fsSL -o appimagetool https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
+          chmod +x appimagetool
+          ARCH=x86_64 ./appimagetool --appimage-extract-and-run AppDir ObjectifPrix-x86_64.AppImage
+          chmod +x ObjectifPrix-x86_64.AppImage
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ObjectifPrix-AppImage
+          path: linux/ObjectifPrix-x86_64.AppImage
+
+      - name: Publier dans « Releases »
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete pc-latest --yes --cleanup-tag || true
+          gh release create pc-latest linux/ObjectifPrix-x86_64.AppImage \
+            --title "Objectif Prix pour PC (AppImage)" \
+            --notes "Version Linux à jour. Télécharge le fichier, puis : clic droit > Propriétés > Permissions > Autoriser l'exécution, et double-clic."
