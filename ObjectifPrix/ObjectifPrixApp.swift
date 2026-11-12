@@ -5,18 +5,32 @@ struct ObjectifPrixApp: App {
     @Environment(\.scenePhase) private var phase
     @StateObject private var store = Store.shared
     @StateObject private var sync = SyncService.shared
+    @StateObject private var settings = Settings.shared
 
     init() {
         BackgroundRefresh.register()
-        Notifier.setup()
+        // Au premier lancement, la permission des notifications est demandée pendant le tutoriel.
+        Notifier.setup(askPermission: UserDefaults.standard.bool(forKey: "set.onboarded"))
     }
 
     var body: some Scene {
         WindowGroup {
-            RootView()
-                .environmentObject(store)
-                .environmentObject(sync)
-                .preferredColorScheme(.dark)
+            ZStack {
+                RootView()
+                if settings.tutorialPresented {
+                    TutorialView()
+                        .transition(.opacity)
+                        .zIndex(1)
+                }
+            }
+            .environmentObject(store)
+            .environmentObject(sync)
+            .environmentObject(settings)
+            .preferredColorScheme(Theme.scheme)
+            .environment(\.dynamicTypeSize, settings.typeSize)
+            .onAppear {
+                if !settings.onboarded { settings.tutorialPresented = true }
+            }
         }
         .onChange(of: phase) { newPhase in
             if newPhase == .active {

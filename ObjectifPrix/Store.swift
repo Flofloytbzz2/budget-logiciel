@@ -13,7 +13,7 @@ final class Store: ObservableObject {
     @Published var fetching: Set<UUID> = []
 
     private let fileURL: URL
-    private let refreshEvery: TimeInterval = 24 * 3600
+    private var refreshEvery: TimeInterval { TimeInterval(max(Prefs.refreshHours, 1)) * 3600 }
     private let retryAfterFailure: TimeInterval = 3 * 3600
 
     private init() {
@@ -79,7 +79,7 @@ final class Store: ObservableObject {
 
     /// Retourne true si le lien a changé.
     @discardableResult
-    func edit(_ id: UUID, name: String, url: String, monthly: Double, alert: Double) -> Bool {
+    func edit(_ id: UUID, name: String, url: String, monthly: Double, alert: Double, currency: String) -> Bool {
         var urlChanged = false
         update(id) { g in
             urlChanged = (g.url != url)
@@ -87,6 +87,7 @@ final class Store: ObservableObject {
             g.url = url
             g.monthly = monthly
             g.alertBelow = alert
+            g.currency = currency
             if urlChanged {
                 g.lastCheck = nil
                 g.lastAttempt = nil
@@ -99,6 +100,39 @@ final class Store: ObservableObject {
             }
         }
         return urlChanged
+    }
+
+    // MARK: - Sauvegarde
+
+    /// Fichier JSON de sauvegarde (même format que la synchro).
+    func backupData() -> Data? {
+        let doc = WireDoc(goals: goals.map { $0.wire() })
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        return try? encoder.encode(doc)
+    }
+
+    /// Fusionne une sauvegarde avec les objectifs actuels. Retourne le nombre d'objectifs lus, ou nil si le fichier est illisible.
+    @discardableResult
+    func restore(from data: Data) -> Int? {
+        guard let doc = try? JSONDecoder().decode(WireDoc.self, from: data), !doc.goals.isEmpty else { return nil }
+        let incoming: [Goal] = doc.goals.compactMap { Goal(wire: $0) }
+        guard !incoming.isEmpty else { return nil }
+        goals = SyncMerge.merge(local: goals, remote: incoming)
+        SyncService.shared.scheduleSync()
+        return incoming.filter { !$0.isDeleted }.count
+    }
+
+    /// Objectifs visibles, dans l'ordre choisi dans les réglages.
+    func sortedGoals(_ choice: SortChoice) -> [Goal] {
+        let list = visibleGoals
+        switch choice {
+        case .added: return list
+        case .progress: return list.sorted { $0.progress > $1.progress }
+        case .remaining: return list.sorted { ($0.remaining ?? .greatestFiniteMagnitude) < ($1.remaining ?? .greatestFiniteMagnitude) }
+        case .price: return list.sorted { ($0.price ?? .greatestFiniteMagnitude) < ($1.price ?? .greatestFiniteMagnitude) }
+        case .name: return list.sorted { $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }
+        }
     }
 
     // MARK: - Argent
@@ -137,11 +171,11 @@ final class Store: ObservableObject {
             if x.history.count > 365 { x.history.removeFirst(x.history.count - 365) }
 
             if let o = old, rounded < o - 0.004 {
-                messages.append("Baisse de prix : \(Fmt.euro(o)) → \(Fmt.euro(rounded))")
+                messages.append(L.f("notif.drop", x.money(o), x.money(rounded)))
             }
             if x.alertBelow > 0 {
                 if rounded <= x.alertBelow, x.alertedPrice != rounded {
-                    messages.append("Sous ton seuil de \(Fmt.euro(x.alertBelow))")
+                    messages.append(L.f("notif.below", x.money(x.alertBelow)))
                     x.alertedPrice = rounded
                 } else if rounded > x.alertBelow {
                     x.alertedPrice = nil
@@ -163,6 +197,17 @@ final class Store: ObservableObject {
 
         do {
             let result = try await PriceFetcher.fetch(urlString: g.url)
+            let current = goal(id)
+            let firstReading: Bool = (current?.price == nil) && (current?.history.isEmpty ?? true)
+            if let found = result.currency {
+                if firstReading {
+                    update(id) { x in x.currency = found }
+                } else if result.explicit, found != (current?.cur ?? found) {
+                    let message = L.f("err.currency_mismatch", found, current?.cur ?? "")
+                    update(id, touch: false) { $0.lastError = message }
+                    return message
+                }
+            }
             update(id) { x in
                 if x.name.isEmpty, let t = result.title { x.name = String(t.prefix(60)) }
             }
@@ -206,13 +251,19 @@ final class ForegroundNotifier: NSObject, UNUserNotificationCenterDelegate {
 }
 
 enum Notifier {
-    static func setup() {
+    /// `askPermission: false` pendant le tutoriel : la permission est demandée à l'étape dédiée.
+    static func setup(askPermission: Bool) {
         let center = UNUserNotificationCenter.current()
         center.delegate = ForegroundNotifier.shared
-        center.requestAuthorization(options: [.alert, .sound, .badge]) { _, _ in }
+        if askPermission { requestPermission() }
+    }
+
+    static func requestPermission() {
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { _, _ in }
     }
 
     static func send(title: String, body: String) {
+        guard Prefs.notificationsOn else { return }
         let content = UNMutableNotificationContent()
         content.title = title
         content.body = body
@@ -235,6 +286,7 @@ enum BackgroundRefresh {
             }
             schedule()
             let work = Task { @MainActor in
+                _ = Settings.shared
                 await SyncService.shared.syncNow()
                 await Store.shared.refreshDue()
                 await SyncService.shared.syncNow()
@@ -246,7 +298,7 @@ enum BackgroundRefresh {
 
     static func schedule() {
         let request = BGAppRefreshTaskRequest(identifier: identifier)
-        request.earliestBeginDate = Date(timeIntervalSinceNow: 6 * 3600)
+        request.earliestBeginDate = Date(timeIntervalSinceNow: Double(max(min(Prefs.refreshHours, 12), 3)) * 3600)
         try? BGTaskScheduler.shared.submit(request)
     }
 }

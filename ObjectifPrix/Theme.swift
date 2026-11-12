@@ -9,28 +9,49 @@ extension Color {
     }
 }
 
+/// Couleurs de l'appli : elles suivent le thème choisi dans les réglages.
 enum Theme {
-    static let bg = Color(hex: 0x0A0E1A)
-    static let panel = Color(hex: 0x121829)
-    static let panel2 = Color(hex: 0x1A2340)
-    static let input = Color(hex: 0x0D1322)
-    static let border = Color(hex: 0x26304F)
-    static let text = Color(hex: 0xEAF0FF)
-    static let muted = Color(hex: 0x8390B0)
-    static let accent = Color(hex: 0x2DE2B1)
-    static let violet = Color(hex: 0x7C5CFF)
-    static let gold = Color(hex: 0xFFC857)
-    static let bad = Color(hex: 0xFF5C7A)
-    static let onAccent = Color(hex: 0x04281F)
+    static var bg: Color { Color(hex: Prefs.palette.bg) }
+    static var panel: Color { Color(hex: Prefs.palette.panel) }
+    static var panel2: Color { Color(hex: Prefs.palette.panel2) }
+    static var input: Color { Color(hex: Prefs.palette.input) }
+    static var border: Color { Color(hex: Prefs.palette.border) }
+    static var text: Color { Color(hex: Prefs.palette.text) }
+    static var muted: Color { Color(hex: Prefs.palette.muted) }
+    static var accent: Color { Color(hex: Prefs.accentHex ?? Prefs.palette.accent) }
+    static var violet: Color { Color(hex: Prefs.palette.secondary) }
+    static var gold: Color { Color(hex: Prefs.palette.gold) }
+    static var bad: Color { Color(hex: Prefs.palette.bad) }
+    static var onAccent: Color {
+        if let hex = Prefs.accentHex {
+            return Color(hex: ColorHex.readableText(on: hex))
+        }
+        return Color(hex: Prefs.palette.onAccent)
+    }
+    static var scheme: ColorScheme { Prefs.palette.isLight ? .light : .dark }
+}
+
+/// Police de l'appli : style et taille choisis dans les réglages.
+enum AppFont {
+    static func f(_ size: CGFloat, _ weight: Font.Weight = .regular) -> Font {
+        let design: Font.Design
+        switch Prefs.fontStyle {
+        case .standard: design = .default
+        case .rounded: design = .rounded
+        case .serif: design = .serif
+        case .mono: design = .monospaced
+        }
+        return Font.system(size: size * CGFloat(Prefs.fontScale), weight: weight, design: design)
+    }
 }
 
 struct AppBackground: View {
     var body: some View {
         ZStack {
             Theme.bg
-            RadialGradient(colors: [Theme.violet.opacity(0.22), .clear],
+            RadialGradient(colors: [Theme.violet.opacity(Prefs.palette.isLight ? 0.10 : 0.22), .clear],
                            center: .topLeading, startRadius: 10, endRadius: 420)
-            RadialGradient(colors: [Theme.accent.opacity(0.12), .clear],
+            RadialGradient(colors: [Theme.accent.opacity(Prefs.palette.isLight ? 0.08 : 0.12), .clear],
                            center: .bottomTrailing, startRadius: 10, endRadius: 380)
         }
         .ignoresSafeArea()
@@ -38,10 +59,11 @@ struct AppBackground: View {
 }
 
 struct CardModifier: ViewModifier {
-    var padding: CGFloat = 18
+    var padding: CGFloat? = nil
     func body(content: Content) -> some View {
+        let pad: CGFloat = padding ?? (Prefs.compact ? 12 : 18)
         content
-            .padding(padding)
+            .padding(pad)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
@@ -53,7 +75,7 @@ struct CardModifier: ViewModifier {
 }
 
 extension View {
-    func card(padding: CGFloat = 18) -> some View {
+    func card(padding: CGFloat? = nil) -> some View {
         modifier(CardModifier(padding: padding))
     }
 }
@@ -64,9 +86,9 @@ struct PillButtonStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.system(size: 16, weight: .bold, design: .rounded))
+            .font(AppFont.f(16, .bold))
             .foregroundStyle(foreground)
-            .padding(.vertical, 14)
+            .padding(.vertical, Prefs.compact ? 10 : 14)
             .frame(maxWidth: .infinity)
             .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(fill))
             .opacity(configuration.isPressed ? 0.75 : 1)
@@ -79,7 +101,7 @@ struct SectionLabel: View {
     init(_ text: String) { self.text = text }
     var body: some View {
         Text(text.uppercased())
-            .font(.system(size: 11, weight: .bold))
+            .font(AppFont.f(11, .bold))
             .tracking(1)
             .foregroundStyle(Theme.muted)
     }

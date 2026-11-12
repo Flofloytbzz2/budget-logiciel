@@ -1,12 +1,21 @@
 import SwiftUI
 
 struct RootView: View {
+    @EnvironmentObject var settings: Settings
+
     var body: some View {
-        TabView {
+        TabView(selection: $settings.tab) {
             GoalsTab()
-                .tabItem { Label("Objectifs", systemImage: "target") }
+                .id(settings.revision)
+                .tabItem { Label(L.t("tab.goals"), systemImage: "target") }
+                .tag(0)
             AccountView()
-                .tabItem { Label("Compte", systemImage: "person.crop.circle") }
+                .id(settings.revision)
+                .tabItem { Label(L.t("tab.account"), systemImage: "person.crop.circle") }
+                .tag(1)
+            SettingsView()
+                .tabItem { Label(L.t("tab.settings"), systemImage: "gearshape.fill") }
+                .tag(2)
         }
         .tint(Theme.accent)
     }
@@ -14,6 +23,7 @@ struct RootView: View {
 
 struct GoalsTab: View {
     @EnvironmentObject var store: Store
+    @EnvironmentObject var settings: Settings
     @State private var showNew = false
 
     var body: some View {
@@ -26,14 +36,14 @@ struct GoalsTab: View {
                     list
                 }
             }
-            .navigationTitle("Objectif Prix")
+            .navigationTitle(L.t("app.name"))
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
                         showNew = true
                     } label: {
                         Image(systemName: "plus.circle.fill")
-                            .font(.system(size: 22))
+                            .font(AppFont.f(22))
                             .foregroundStyle(Theme.accent)
                     }
                 }
@@ -50,8 +60,8 @@ struct GoalsTab: View {
 
     private var list: some View {
         ScrollView {
-            LazyVStack(spacing: 14) {
-                ForEach(store.visibleGoals) { goal in
+            LazyVStack(spacing: Prefs.compact ? 10 : 14) {
+                ForEach(store.sortedGoals(settings.sort)) { goal in
                     NavigationLink(value: goal.id) {
                         GoalCard(goal: goal)
                     }
@@ -75,12 +85,12 @@ struct GoalCard: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline) {
                 Text(goal.displayName)
-                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                    .font(AppFont.f(18, .bold))
                     .foregroundStyle(Theme.text)
                     .lineLimit(2)
                 Spacer()
                 Text("\(Int(goal.progress * 100)) %")
-                    .font(.system(size: 18, weight: .heavy, design: .rounded))
+                    .font(AppFont.f(18, .heavy))
                     .foregroundStyle(goal.progress >= 1 ? Theme.gold : Theme.accent)
             }
 
@@ -98,15 +108,15 @@ struct GoalCard: View {
 
             HStack {
                 if let price = goal.price {
-                    Text("\(Fmt.euro(goal.saved)) sur \(Fmt.euro(price))")
+                    Text(L.f("card.saved_of", goal.money(goal.saved), goal.money(price)))
                 } else {
-                    Text("\(Fmt.euro(goal.saved)) · prix inconnu")
+                    Text(L.f("card.saved_unknown", goal.money(goal.saved)))
                 }
                 Spacer()
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .bold))
+                    .font(AppFont.f(12, .bold))
             }
-            .font(.system(size: 13))
+            .font(AppFont.f(13))
             .foregroundStyle(Theme.muted)
         }
         .card()
@@ -128,16 +138,16 @@ struct EmptyState: View {
             .frame(width: 110, height: 110)
             .padding(.bottom, 8)
 
-            Text("Aucun objectif pour l'instant")
-                .font(.system(size: 24, weight: .bold, design: .rounded))
+            Text(L.t("empty.title"))
+                .font(AppFont.f(24, .bold))
                 .foregroundStyle(Theme.text)
                 .multilineTextAlignment(.center)
-            Text("Colle le lien d'un produit idealo et commence à épargner pour l'avoir.")
-                .font(.system(size: 15))
+            Text(L.t("empty.sub"))
+                .font(AppFont.f(15))
                 .foregroundStyle(Theme.muted)
                 .multilineTextAlignment(.center)
 
-            Button("Créer mon premier objectif", action: action)
+            Button(L.t("empty.cta"), action: action)
                 .buttonStyle(PillButtonStyle(fill: Theme.accent, foreground: Theme.onAccent))
                 .padding(.top, 10)
         }

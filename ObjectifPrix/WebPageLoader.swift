@@ -68,6 +68,6 @@ final class WebPageLoader: NSObject, WKNavigationDelegate {
     // MARK: - WKNavigationDelegate
 
     func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
-        finish(.failure(FetchError(message: "Impossible de charger la page (\(error.localizedDescription)).")))
+        finish(.failure(FetchError(message: L.f("fetch.cannot_load", error.localizedDescription))))
     }
 }

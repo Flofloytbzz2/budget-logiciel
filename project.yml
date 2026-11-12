@@ -6,7 +6,7 @@ options:
 settings:
   base:
     SWIFT_VERSION: "5.0"
-    MARKETING_VERSION: "2.0"
+    MARKETING_VERSION: "3.0"
     CURRENT_PROJECT_VERSION: "1"
 targets:
   ObjectifPrix:
@@ -25,7 +25,6 @@ targets:
           - com.objectifprix.app.refresh
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
-        UIUserInterfaceStyle: Dark
         ITSAppUsesNonExemptEncryption: false
     settings:
       base:

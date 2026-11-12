@@ -4,6 +4,7 @@ import SwiftUI
 
 struct GoalEditView: View {
     @EnvironmentObject var store: Store
+    @EnvironmentObject var settings: Settings
     @Environment(\.dismiss) private var dismiss
     let goalID: UUID?
 
@@ -11,51 +12,67 @@ struct GoalEditView: View {
     @State private var url = ""
     @State private var monthly = ""
     @State private var alert = ""
+    @State private var currency = Prefs.defaultCurrency
     @State private var error = ""
     @State private var loaded = false
     @State private var confirmDelete = false
 
     private var editing: Bool { goalID != nil }
 
+    private var currencyChoices: [String] {
+        Currencies.all.contains(currency) ? Currencies.all : [currency] + Currencies.all
+    }
+
     var body: some View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("Ex : Apple Watch SE 3", text: $name)
+                    TextField(L.t("edit.name_placeholder"), text: $name)
                 } header: {
-                    Text("Produit")
+                    Text(L.t("edit.product"))
                 }
                 .listRowBackground(Theme.panel)
 
                 Section {
-                    TextField("https://www.idealo.fr/…", text: $url)
+                    TextField("https://…", text: $url)
                         .keyboardType(.URL)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                 } header: {
-                    Text("Lien idealo")
+                    Text(L.t("edit.link"))
                 } footer: {
-                    Text("Adresse de la page produit. Vide = tu saisis le prix à la main.")
+                    Text(L.t("edit.link_help"))
                 }
                 .listRowBackground(Theme.panel)
 
                 Section {
-                    TextField("Ex : 50", text: $monthly)
-                        .keyboardType(.decimalPad)
-                } header: {
-                    Text("Épargne par mois (€)")
+                    Picker(L.t("edit.currency"), selection: $currency) {
+                        ForEach(currencyChoices, id: \.self) { code in
+                            Text(code + " " + Currencies.symbolText(code)).tag(code)
+                        }
+                    }
                 } footer: {
-                    Text("Sert à estimer la date à laquelle tu pourras l'acheter.")
+                    Text(L.t("edit.currency_help"))
                 }
                 .listRowBackground(Theme.panel)
 
                 Section {
-                    TextField("Ex : 250", text: $alert)
+                    TextField(L.t("edit.monthly_placeholder"), text: $monthly)
                         .keyboardType(.decimalPad)
                 } header: {
-                    Text("Alerte si le prix passe sous (€)")
+                    Text(L.t("edit.monthly"))
                 } footer: {
-                    Text("Tu reçois une notification quand le prix descend sous ce seuil.")
+                    Text(L.t("edit.monthly_help"))
+                }
+                .listRowBackground(Theme.panel)
+
+                Section {
+                    TextField(L.t("edit.alert_placeholder"), text: $alert)
+                        .keyboardType(.decimalPad)
+                } header: {
+                    Text(L.t("edit.alert"))
+                } footer: {
+                    Text(L.t("edit.alert_help"))
                 }
                 .listRowBackground(Theme.panel)
 
@@ -68,8 +85,12 @@ struct GoalEditView: View {
 
                 if editing {
                     Section {
-                        Button("Supprimer cet objectif", role: .destructive) {
-                            confirmDelete = true
+                        Button(L.t("edit.delete"), role: .destructive) {
+                            if Prefs.confirmDelete {
+                                confirmDelete = true
+                            } else {
+                                deleteNow()
+                            }
                         }
                     }
                     .listRowBackground(Theme.panel)
@@ -77,29 +98,31 @@ struct GoalEditView: View {
             }
             .scrollContentBackground(.hidden)
             .background(AppBackground())
-            .navigationTitle(editing ? "Modifier l'objectif" : "Nouvel objectif")
+            .navigationTitle(editing ? L.t("edit.title_edit") : L.t("edit.title_new"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Annuler") { dismiss() }
+                    Button(L.t("common.cancel")) { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Enregistrer", action: save)
+                    Button(L.t("common.save"), action: save)
                         .fontWeight(.bold)
                 }
             }
-            .confirmationDialog("Supprimer cet objectif et son historique ?",
+            .confirmationDialog(L.t("edit.delete_q"),
                                 isPresented: $confirmDelete, titleVisibility: .visible) {
-                Button("Supprimer", role: .destructive) {
-                    if let id = goalID { store.delete(id) }
-                    dismiss()
-                }
-                Button("Annuler", role: .cancel) {}
+                Button(L.t("common.delete"), role: .destructive) { deleteNow() }
+                Button(L.t("common.cancel"), role: .cancel) {}
             }
             .onAppear(perform: loadIfNeeded)
         }
         .tint(Theme.accent)
-        .preferredColorScheme(.dark)
+        .preferredColorScheme(Theme.scheme)
+    }
+
+    private func deleteNow() {
+        if let id = goalID { store.delete(id) }
+        dismiss()
     }
 
     private func loadIfNeeded() {
@@ -108,13 +131,14 @@ struct GoalEditView: View {
         guard let id = goalID, let g = store.goal(id) else { return }
         name = g.name
         url = g.url
+        currency = g.cur
         monthly = g.monthly > 0 ? Fmt.plain(g.monthly) : ""
         alert = g.alertBelow > 0 ? Fmt.plain(g.alertBelow) : ""
     }
 
     private func save() {
         guard let m = Fmt.optionalAmount(monthly), let a = Fmt.optionalAmount(alert) else {
-            error = "Les montants doivent être des nombres positifs (ex : 50 ou 12,5)."
+            error = L.t("edit.err_amounts")
             return
         }
         let cleanName = name.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -122,26 +146,28 @@ struct GoalEditView: View {
         if !cleanURL.isEmpty {
             // accepte un lien collé avec du texte autour (bouton Partager) et retrouve l'adresse
             guard let parsed = PriceFetcher.cleanURL(cleanURL) else {
-                error = "Je ne trouve pas d'adresse http:// ou https:// dans ce lien."
+                error = L.t("edit.err_link")
                 return
             }
             cleanURL = parsed.absoluteString
         }
         if cleanName.isEmpty && cleanURL.isEmpty {
-            error = "Donne au moins un nom ou un lien."
+            error = L.t("edit.err_empty")
             return
         }
 
         if let id = goalID {
-            let changed = store.edit(id, name: cleanName, url: cleanURL, monthly: m, alert: a)
+            let changed = store.edit(id, name: cleanName, url: cleanURL, monthly: m, alert: a, currency: currency)
             if changed && !cleanURL.isEmpty {
                 Task { _ = await store.refresh(id, manual: true) }
             }
         } else {
-            let goal = Goal(name: cleanName, url: cleanURL, monthly: m, alertBelow: a)
+            var goal = Goal(name: cleanName, url: cleanURL, monthly: m, alertBelow: a)
+            goal.currency = currency
             store.add(goal)
             if !cleanURL.isEmpty {
-                Task { _ = await store.refresh(goal.id, manual: true) }
+                let newID = goal.id
+                Task { _ = await store.refresh(newID, manual: true) }
             }
         }
         dismiss()
@@ -162,10 +188,10 @@ struct ManualPriceView: View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("Ex : 279,99", text: $price)
+                    TextField(L.t("manual.placeholder"), text: $price)
                         .keyboardType(.decimalPad)
                 } header: {
-                    Text("Prix (€)")
+                    Text(L.f("manual.title_cur", store.goal(goalID)?.cur ?? Prefs.defaultCurrency))
                 } footer: {
                     Text(footer)
                 }
@@ -178,33 +204,33 @@ struct ManualPriceView: View {
             }
             .scrollContentBackground(.hidden)
             .background(AppBackground())
-            .navigationTitle("Prix manuel")
+            .navigationTitle(L.t("menu.manual_price"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Annuler") { dismiss() }
+                    Button(L.t("common.cancel")) { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Enregistrer", action: save)
+                    Button(L.t("common.save"), action: save)
                         .fontWeight(.bold)
                 }
             }
         }
         .tint(Theme.accent)
-        .preferredColorScheme(.dark)
+        .preferredColorScheme(Theme.scheme)
     }
 
     private var footer: String {
-        var text = "Pratique si le site bloque la lecture automatique. Le prochain relevé automatique pourra le remplacer."
-        if let p = store.goal(goalID)?.price {
-            text = "Prix actuel enregistré : \(Fmt.euro(p)). " + text
+        var text = L.t("manual.help")
+        if let g = store.goal(goalID), let p = g.price {
+            text = L.f("manual.current", g.money(p)) + " " + text
         }
         return text
     }
 
     private func save() {
         guard let value = Fmt.amount(price), value > 0 else {
-            error = "Entre un prix valide (ex : 279 ou 279,99)."
+            error = L.t("manual.invalid")
             return
         }
         store.recordPrice(goalID, value, notify: false)

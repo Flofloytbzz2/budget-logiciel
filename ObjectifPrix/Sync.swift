@@ -25,6 +25,7 @@ struct WireGoal: Codable {
     var lastCheck: String?
     var history: [WirePoint]
     var log: [WireEntry]
+    var currency: String?
     var updatedAt: String
     var deleted: Bool
 }
@@ -97,6 +98,7 @@ extension Goal {
             lastCheck: lastCheck.map { Iso.string($0) },
             history: sortedHistory.map { WirePoint(t: Iso.string($0.date), price: $0.price) },
             log: log.map { WireEntry(t: Iso.string($0.date), amount: $0.amount, note: $0.note) },
+            currency: currency,
             updatedAt: Iso.string(stamp),
             deleted: isDeleted)
     }
@@ -112,6 +114,7 @@ extension Goal {
             .compactMap { p in Iso.date(p.t).map { PricePoint(date: $0, price: p.price) } }
             .sorted { $0.date < $1.date }
         log = w.log.compactMap { e in Iso.date(e.t).map { MoneyEntry(date: $0, amount: e.amount, note: e.note) } }
+        currency = Currencies.normalize(w.currency) ?? "EUR"
         updatedAt = Iso.date(w.updatedAt) ?? Date.distantPast
         deleted = w.deleted
     }
@@ -170,7 +173,7 @@ struct GistClient {
     private static let base = "https://api.github.com"
 
     private func call(_ method: String, _ path: String, body: Data? = nil) async throws -> Data {
-        guard let url = URL(string: Self.base + path) else { throw FetchError(message: "Adresse invalide.") }
+        guard let url = URL(string: Self.base + path) else { throw FetchError(message: L.t("err.bad_address")) }
         var request = URLRequest(url: url, timeoutInterval: 25)
         request.httpMethod = method
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
@@ -184,20 +187,20 @@ struct GistClient {
         do {
             result = try await URLSession.shared.data(for: request)
         } catch {
-            throw FetchError(message: "Connexion impossible. Vérifie ton réseau.")
+            throw FetchError(message: L.t("err.network"))
         }
         let (data, response) = result
 
         if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
             switch http.statusCode {
             case 401:
-                throw FetchError(message: "Jeton refusé : il est invalide ou a expiré.")
+                throw FetchError(message: L.t("sync.err.token"))
             case 403:
-                throw FetchError(message: "GitHub refuse l'accès (jeton sans la permission « gist », ou limite atteinte).")
+                throw FetchError(message: L.t("sync.err.forbidden"))
             case 404:
-                throw FetchError(message: "Données en ligne introuvables (gist supprimé ?). Déconnecte-toi puis reconnecte-toi.")
+                throw FetchError(message: L.t("sync.err.notfound"))
             default:
-                throw FetchError(message: "Erreur GitHub \(http.statusCode).")
+                throw FetchError(message: L.f("sync.err.http", String(http.statusCode)))
             }
         }
         return data
@@ -207,7 +210,7 @@ struct GistClient {
         let data = try await call("GET", "/user")
         guard let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let login = object["login"] as? String else {
-            throw FetchError(message: "Réponse GitHub inattendue.")
+            throw FetchError(message: L.t("sync.err.unexpected"))
         }
         return login
     }
@@ -245,7 +248,7 @@ struct GistClient {
         let data = try await call("POST", "/gists", body: body)
         guard let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let id = object["id"] as? String else {
-            throw FetchError(message: "Réponse GitHub inattendue.")
+            throw FetchError(message: L.t("sync.err.unexpected"))
         }
         return id
     }
@@ -255,7 +258,7 @@ struct GistClient {
         guard let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let files = object["files"] as? [String: Any],
               let file = files[Self.fileName] as? [String: Any] else {
-            throw FetchError(message: "Fichier de données absent du gist.")
+            throw FetchError(message: L.t("sync.err.nofile"))
         }
         var content = file["content"] as? String ?? ""
         if (file["truncated"] as? Bool) == true,
@@ -270,7 +273,7 @@ struct GistClient {
         }
         guard let docData = content.data(using: .utf8),
               let doc = try? JSONDecoder().decode(WireDoc.self, from: docData) else {
-            throw FetchError(message: "Le fichier de données en ligne est illisible.")
+            throw FetchError(message: L.t("sync.err.unreadable"))
         }
         return doc
     }
@@ -349,13 +352,6 @@ final class SyncService: ObservableObject {
     private var pending: Task<Void, Never>?
     private let defaults = UserDefaults.standard
 
-    private static let clock: DateFormatter = {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "fr_FR")
-        f.dateFormat = "HH:mm"
-        return f
-    }()
-
     private init() {
         token = Secrets.loadToken()
         gistID = defaults.string(forKey: "syncGistID")
@@ -366,7 +362,7 @@ final class SyncService: ObservableObject {
     /// Retourne un message d'erreur, ou nil si la connexion a réussi.
     func connect(token newToken: String) async -> String? {
         let trimmed = newToken.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return "Colle d'abord ton jeton GitHub." }
+        guard !trimmed.isEmpty else { return L.t("sync.paste_token") }
         let client = GistClient(token: trimmed)
         do {
             let name = try await client.whoami()
@@ -381,7 +377,7 @@ final class SyncService: ObservableObject {
             gistID = id
             login = name
             connected = true
-            status = "Connecté"
+            status = L.t("sync.connected_status")
             isError = false
         } catch {
             return (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
@@ -422,7 +418,7 @@ final class SyncService: ObservableObject {
         }
         isSyncing = true
         isError = false
-        status = "Synchronisation…"
+        status = L.t("sync.syncing")
         let client = GistClient(token: token)
         do {
             let doc = try await client.read(gistID)
@@ -435,7 +431,7 @@ final class SyncService: ObservableObject {
             if SyncMerge.needsPush(merged: merged, remote: remote) {
                 try await client.write(gistID, WireDoc(goals: merged.map { $0.wire() }))
             }
-            status = "Synchronisé à " + Self.clock.string(from: Date())
+            status = L.f("sync.synced_at", Fmt.clock(Date()))
         } catch {
             isError = true
             status = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription

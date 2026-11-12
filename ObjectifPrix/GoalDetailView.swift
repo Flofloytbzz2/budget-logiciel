@@ -58,12 +58,12 @@ struct GoalDetailView: View {
                     Button {
                         showManual = true
                     } label: {
-                        Label("Prix manuel", systemImage: "pencil")
+                        Label(L.t("menu.manual_price"), systemImage: "pencil")
                     }
                     Button {
                         showEdit = true
                     } label: {
-                        Label("Modifier l'objectif", systemImage: "slider.horizontal.3")
+                        Label(L.t("menu.edit_goal"), systemImage: "slider.horizontal.3")
                     }
                 } label: {
                     Image(systemName: "ellipsis.circle")
@@ -71,7 +71,7 @@ struct GoalDetailView: View {
             }
             ToolbarItemGroup(placement: .keyboard) {
                 Spacer()
-                Button("OK") { focused = false }
+                Button(L.t("common.ok")) { focused = false }
             }
         }
         .sheet(isPresented: $showEdit) { GoalEditView(goalID: goalID) }
@@ -80,7 +80,7 @@ struct GoalDetailView: View {
             if gone { dismiss() }
         }
         .overlay(alignment: .bottom) { toastView }
-        .animation(.spring(), value: toastText)
+        .animation(Prefs.animations ? Animation.spring() : nil, value: toastText)
     }
 
     // MARK: - Sections
@@ -88,15 +88,15 @@ struct GoalDetailView: View {
     private func header(_ g: Goal) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(g.displayName)
-                .font(.system(size: 28, weight: .heavy, design: .rounded))
+                .font(AppFont.f(28, .heavy))
                 .foregroundStyle(Theme.text)
             if let error = g.lastError {
-                Text("Dernier relevé échoué : \(error)")
-                    .font(.system(size: 13))
+                Text(L.f("detail.last_failed", error))
+                    .font(AppFont.f(13))
                     .foregroundStyle(Theme.bad)
             } else {
                 Text(subtitle(g))
-                    .font(.system(size: 13))
+                    .font(AppFont.f(13))
                     .foregroundStyle(Theme.muted)
             }
         }
@@ -107,7 +107,7 @@ struct GoalDetailView: View {
     private func subtitle(_ g: Goal) -> String {
         var parts = [g.host]
         if let last = g.lastCheck {
-            parts.append("mis à jour le " + Fmt.dateTime.string(from: last))
+            parts.append(L.f("detail.updated_on", Fmt.dateTime(last)))
         }
         return parts.joined(separator: "  ·  ")
     }
@@ -125,7 +125,7 @@ struct GoalDetailView: View {
         let low = g.history.map(\.price).min()
         let remainingText: String = {
             guard let r = g.remaining else { return "—" }
-            return r <= 0 ? "Atteint !" : Fmt.euro(r)
+            return r <= 0 ? L.t("est.reached") : g.money(r)
         }()
 
         return VStack(spacing: 20) {
@@ -134,17 +134,17 @@ struct GoalDetailView: View {
                 .padding(.top, 6)
 
             LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
-                StatTile(label: "Prix actuel",
-                         value: g.price.map(Fmt.euro) ?? "—",
+                StatTile(label: L.t("stat.current_price"),
+                         value: g.price.map { g.money($0) } ?? "—",
                          sub: variation.text,
                          subColor: variationColor)
-                StatTile(label: "Épargné",
-                         value: Fmt.euro(g.saved),
-                         sub: "\(Int(g.progress * 100)) % de l'objectif")
-                StatTile(label: "Il manque",
+                StatTile(label: L.t("stat.saved"),
+                         value: g.money(g.saved),
+                         sub: L.f("stat.percent_of_goal", String(Int(g.progress * 100))))
+                StatTile(label: L.t("stat.missing"),
                          value: remainingText,
-                         sub: low.map { "Plus bas : \(Fmt.euro($0))" } ?? "En attente d'un relevé")
-                StatTile(label: "Date estimée",
+                         sub: low.map { L.f("stat.lowest", g.money($0)) } ?? L.t("stat.waiting"))
+                StatTile(label: L.t("stat.estimated_date"),
                          value: estimate.value,
                          sub: estimate.sub)
             }
@@ -155,17 +155,17 @@ struct GoalDetailView: View {
 
     private func moneyCard(_ g: Goal) -> some View {
         VStack(alignment: .leading, spacing: 14) {
-            SectionLabel("Mon argent")
+            SectionLabel(L.t("money.title"))
 
             HStack(spacing: 10) {
                 TextField("0", text: $amount)
                     .keyboardType(.decimalPad)
                     .focused($focused)
                     .multilineTextAlignment(.trailing)
-                    .font(.system(size: 30, weight: .bold, design: .rounded))
+                    .font(AppFont.f(30, .bold))
                     .foregroundStyle(Theme.text)
-                Text("€")
-                    .font(.system(size: 26, weight: .bold, design: .rounded))
+                Text(Currencies.symbolText(g.cur))
+                    .font(AppFont.f(26, .bold))
                     .foregroundStyle(Theme.muted)
             }
             .padding(.horizontal, 16)
@@ -174,9 +174,9 @@ struct GoalDetailView: View {
             .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .stroke(focused ? Theme.accent : Theme.border, lineWidth: 1.5))
 
-            TextField("Note facultative (prime, cadeau…)", text: $note)
+            TextField(L.t("money.note_placeholder"), text: $note)
                 .focused($focused)
-                .font(.system(size: 15))
+                .font(AppFont.f(15))
                 .foregroundStyle(Theme.text)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
@@ -186,14 +186,14 @@ struct GoalDetailView: View {
                 Button {
                     move(+1)
                 } label: {
-                    Label("Ajouter", systemImage: "plus")
+                    Label(L.t("money.add"), systemImage: "plus")
                 }
                 .buttonStyle(PillButtonStyle(fill: Theme.accent, foreground: Theme.onAccent))
 
                 Button {
                     move(-1)
                 } label: {
-                    Label("Retirer", systemImage: "minus")
+                    Label(L.t("money.remove"), systemImage: "minus")
                 }
                 .buttonStyle(PillButtonStyle(fill: Theme.bad.opacity(0.18), foreground: Theme.bad))
             }
@@ -204,22 +204,22 @@ struct GoalDetailView: View {
     private func activityCard(_ g: Goal) -> some View {
         let entries = Array(g.log.suffix(8).reversed())
         return VStack(alignment: .leading, spacing: 12) {
-            SectionLabel("Activité")
+            SectionLabel(L.t("activity.title"))
             if entries.isEmpty {
-                Text("Aucun mouvement pour l'instant.")
-                    .font(.system(size: 14))
+                Text(L.t("activity.empty"))
+                    .font(AppFont.f(14))
                     .foregroundStyle(Theme.muted)
             } else {
                 ForEach(entries) { e in
                     HStack {
-                        Text((e.amount > 0 ? "+ " : "− ") + Fmt.euro(abs(e.amount)))
-                            .font(.system(size: 16, weight: .bold, design: .rounded))
+                        Text((e.amount > 0 ? "+ " : "− ") + g.money(abs(e.amount)))
+                            .font(AppFont.f(16, .bold))
                             .foregroundStyle(e.amount > 0 ? Theme.accent : Theme.bad)
                         Spacer()
                         Text(e.note.isEmpty
-                             ? Fmt.shortDate.string(from: e.date)
-                             : Fmt.shortDate.string(from: e.date) + "  ·  " + e.note)
-                            .font(.system(size: 13))
+                             ? Fmt.shortDate(e.date)
+                             : Fmt.shortDate(e.date) + "  ·  " + e.note)
+                            .font(AppFont.f(13))
                             .foregroundStyle(Theme.muted)
                             .lineLimit(1)
                     }
@@ -233,22 +233,22 @@ struct GoalDetailView: View {
 
     private func move(_ sign: Double) {
         guard let value = Fmt.amount(amount), value > 0 else {
-            show("Montant invalide (ex : 25 ou 12,50)", bad: true)
+            show(L.t("money.invalid"), bad: true)
             return
         }
         let before = goal?.progress ?? 0
         guard store.moveMoney(goalID, amount: value, note: note.trimmingCharacters(in: .whitespaces), sign: sign) else {
-            show("Il n'y a rien à retirer", bad: true)
+            show(L.t("money.nothing_to_remove"), bad: true)
             return
         }
         amount = ""
         note = ""
         focused = false
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        Haptics.tap()
 
         let after = store.goal(goalID)?.progress ?? 0
-        if before < 1 && after >= 1 {
-            UINotificationFeedbackGenerator().notificationOccurred(.success)
+        if before < 1 && after >= 1 && Prefs.confetti {
+            Haptics.success()
             let id = UUID()
             confettiID = id
             Task {
@@ -261,13 +261,13 @@ struct GoalDetailView: View {
     private func refresh() async {
         guard let g = goal else { return }
         if g.url.isEmpty {
-            show("Pas de lien pour cet objectif : utilise « Prix manuel »", bad: true)
+            show(L.t("detail.no_link"), bad: true)
             return
         }
         if let error = await store.refresh(goalID, manual: true) {
             show(error, bad: true)
         } else {
-            show("Prix mis à jour")
+            show(L.t("detail.price_updated"))
         }
     }
 
@@ -284,7 +284,7 @@ struct GoalDetailView: View {
     private var toastView: some View {
         if let text = toastText {
             Text(text)
-                .font(.system(size: 14, weight: .semibold))
+                .font(AppFont.f(14, .semibold))
                 .multilineTextAlignment(.center)
                 .foregroundStyle(toastBad ? Color.white : Theme.onAccent)
                 .padding(.horizontal, 16)

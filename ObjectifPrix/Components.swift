@@ -23,18 +23,18 @@ struct RingView: View {
                 .shadow(color: (reached ? Theme.gold : Theme.accent).opacity(0.35), radius: 10)
             VStack(spacing: 2) {
                 Text("\(Int(progress * 100)) %")
-                    .font(.system(size: 38, weight: .heavy, design: .rounded))
+                    .font(AppFont.f(38, .heavy))
                     .foregroundStyle(reached ? Theme.gold : Theme.text)
-                Text("de l'objectif")
-                    .font(.system(size: 13))
+                Text(L.t("ring.of_goal"))
+                    .font(AppFont.f(13))
                     .foregroundStyle(Theme.muted)
             }
         }
         .onAppear {
-            withAnimation(.easeOut(duration: 1.0)) { shown = progress }
+            withAnimation(Prefs.animations ? Animation.easeOut(duration: 1.0) : nil) { shown = progress }
         }
         .onChange(of: progress) { newValue in
-            withAnimation(.easeOut(duration: 0.8)) { shown = newValue }
+            withAnimation(Prefs.animations ? Animation.easeOut(duration: 0.8) : nil) { shown = newValue }
         }
     }
 }
@@ -50,16 +50,16 @@ struct StatTile: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(label.uppercased())
-                .font(.system(size: 10, weight: .bold))
+                .font(AppFont.f(10, .bold))
                 .tracking(1)
                 .foregroundStyle(Theme.muted)
             Text(value)
-                .font(.system(size: 20, weight: .bold, design: .rounded))
+                .font(AppFont.f(20, .bold))
                 .foregroundStyle(Theme.text)
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
             Text(sub)
-                .font(.system(size: 11))
+                .font(AppFont.f(11))
                 .foregroundStyle(subColor)
                 .lineLimit(2)
                 .minimumScaleFactor(0.8)
@@ -109,7 +109,7 @@ struct ConfettiView: View {
         }
         .allowsHitTesting(false)
         .onAppear {
-            withAnimation(.easeOut(duration: 2.4)) { go = true }
+            withAnimation(Prefs.animations ? Animation.easeOut(duration: 2.4) : nil) { go = true }
         }
     }
 }
@@ -124,21 +124,21 @@ struct PriceChart: View {
         let points = goal.sortedHistory
         VStack(alignment: .leading, spacing: 14) {
             HStack {
-                SectionLabel("Évolution du prix")
+                SectionLabel(L.t("chart.title"))
                 Spacer()
                 if let low = points.map(\.price).min(), let high = points.map(\.price).max() {
-                    Text("bas \(Fmt.euro(low)) · haut \(Fmt.euro(high))")
-                        .font(.system(size: 11))
+                    Text(L.f("chart.range", goal.money(low), goal.money(high)))
+                        .font(AppFont.f(11))
                         .foregroundStyle(Theme.muted)
                 }
             }
             if points.isEmpty {
                 VStack(spacing: 6) {
-                    Text("Pas encore de relevé de prix")
-                        .font(.system(size: 15, weight: .semibold))
+                    Text(L.t("chart.empty_title"))
+                        .font(AppFont.f(15, .semibold))
                         .foregroundStyle(Theme.text)
-                    Text("Le graphique se construit au fil des jours.")
-                        .font(.system(size: 13))
+                    Text(L.t("chart.empty_sub"))
+                        .font(AppFont.f(13))
                         .foregroundStyle(Theme.muted)
                 }
                 .frame(maxWidth: .infinity, minHeight: 150)
@@ -177,21 +177,21 @@ struct PriceChart: View {
                     .opacity(points.count > 30 ? 0 : 1)
             }
             if showSaved {
-                RuleMark(y: .value("Épargne", goal.saved))
+                RuleMark(y: .value("Savings", goal.saved))
                     .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [6, 5]))
                     .foregroundStyle(Theme.gold)
                     .annotation(position: .top, alignment: .trailing) {
-                        Text("mon épargne")
-                            .font(.system(size: 10))
+                        Text(L.t("chart.my_savings"))
+                            .font(AppFont.f(10))
                             .foregroundStyle(Theme.gold)
                     }
             }
             if let s = selected {
                 RuleMark(x: .value("Date", s.date))
                     .foregroundStyle(Theme.muted.opacity(0.6))
-                                          .annotation(position: .top, spacing: 4) {
-                        Text("\(Fmt.shortDate.string(from: s.date))  \(Fmt.euro(s.price))")
-                            .font(.system(size: 12, weight: .bold))
+                    .annotation(position: .top, spacing: 4) {
+                        Text(Fmt.shortDate(s.date) + "  " + goal.money(s.price))
+                            .font(AppFont.f(12, .bold))
                             .foregroundStyle(Theme.text)
                             .padding(.horizontal, 10)
                             .padding(.vertical, 6)
@@ -211,7 +211,7 @@ struct PriceChart: View {
         }
         .chartXAxis {
             AxisMarks(values: .automatic(desiredCount: 4)) { _ in
-                AxisValueLabel(format: .dateTime.day().month())
+                AxisValueLabel(format: .dateTime.day().month().locale(Locale(identifier: L.localeID)))
                     .foregroundStyle(Theme.muted)
             }
         }
