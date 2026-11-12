@@ -2,8 +2,11 @@ name: Construire l'IPA
 
 on:
   push:
-    branches: [main, master]
+    branches-ignore: [build-log]
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -20,6 +23,7 @@ jobs:
 
       - name: Compiler (sans signature)
         run: |
+          set -o pipefail
           xcodebuild \
             -project ObjectifPrix.xcodeproj \
             -scheme ObjectifPrix \
@@ -29,7 +33,22 @@ jobs:
             -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGN_IDENTITY=""
+            CODE_SIGN_IDENTITY="" 2>&1 | tee build.log
+
+      - name: Garder le journal de compilation (branche build-log)
+        if: always()
+        run: |
+          mkdir -p /tmp/log
+          cp build.log /tmp/log/build.log 2>/dev/null || echo "pas de journal" > /tmp/log/build.log
+          grep -E "error:|BUILD (SUCCEEDED|FAILED)" /tmp/log/build.log | head -200 > /tmp/log/errors.txt || true
+          cd /tmp/log
+          git init -q
+          git config user.name "build-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git checkout -q -b build-log
+          git add .
+          git commit -q -m "journal ${GITHUB_SHA}"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" build-log
 
       - name: Fabriquer le fichier .ipa
         run: |
