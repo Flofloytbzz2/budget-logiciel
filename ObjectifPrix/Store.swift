@@ -60,6 +60,7 @@ final class Store: ObservableObject {
 
     func delete(_ id: UUID) {
         update(id) { $0.deleted = true }
+        SavingRules.shared.remove(id)
     }
 
     /// `touch: false` pour les changements propres à cet appareil (dernière tentative, erreur…).
@@ -210,6 +211,7 @@ final class Store: ObservableObject {
             }
             update(id) { x in
                 if x.name.isEmpty, let t = result.title { x.name = String(t.prefix(60)) }
+                if let img = result.image { x.imageURL = img }
             }
             recordPrice(id, result.price)
             return nil
@@ -247,6 +249,24 @@ final class ForegroundNotifier: NSObject, UNUserNotificationCenterDelegate {
                                 willPresent notification: UNNotification,
                                 withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
         completionHandler([.banner, .sound])
+    }
+
+    /// Bouton « Ajouter le montant » d'un rappel d'épargne.
+    func userNotificationCenter(_ center: UNUserNotificationCenter,
+                                didReceive response: UNNotificationResponse,
+                                withCompletionHandler completionHandler: @escaping () -> Void) {
+        let info = response.notification.request.content.userInfo
+        let idString: String? = info["goal"] as? String
+        let amount: Double = (info["amount"] as? Double) ?? 0
+        if response.actionIdentifier == "ADD", let text = idString, let id = UUID(uuidString: text), amount > 0 {
+            Task { @MainActor in
+                _ = Settings.shared
+                _ = Store.shared.moveMoney(id, amount: amount, note: L.t("rem.note"), sign: 1)
+                completionHandler()
+            }
+        } else {
+            completionHandler()
+        }
     }
 }
 
@@ -288,6 +308,7 @@ enum BackgroundRefresh {
             let work = Task { @MainActor in
                 _ = Settings.shared
                 await SyncService.shared.syncNow()
+                SavingRules.shared.applyAuto(store: Store.shared)
                 await Store.shared.refreshDue()
                 await SyncService.shared.syncNow()
                 refreshTask.setTaskCompleted(success: true)

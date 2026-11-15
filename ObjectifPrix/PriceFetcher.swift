@@ -11,6 +11,7 @@ struct PriceResult {
     var title: String?
     var currency: String?
     var explicit: Bool      // devise lue clairement (code ou symbole sans ambiguïté), pas devinée avec « $ »
+    var image: String? = nil
 }
 
 struct FetchedPrice {
@@ -18,6 +19,7 @@ struct FetchedPrice {
     var title: String?
     var currency: String?
     var explicit: Bool
+    var image: String? = nil
 }
 
 /// Lit le prix d'un produit sur la page web de n'importe quelle boutique (idealo, Amazon, Best Buy…).
@@ -34,7 +36,8 @@ enum PriceFetcher {
             let page = try await download(url)
             let found = extract(from: page)
             if let price = found.price {
-                return FetchedPrice(price: price, title: found.title, currency: found.currency, explicit: found.explicit)
+                return FetchedPrice(price: price, title: found.title, currency: found.currency,
+                                    explicit: found.explicit, image: resolveImage(found.image, base: url))
             }
             firstError = FetchError(message: describeFailure(page))
         } catch let error as FetchError {
@@ -48,7 +51,8 @@ enum PriceFetcher {
             let page = try await WebPageLoader.html(for: url) { extract(from: $0).price != nil }
             let found = extract(from: page)
             if let price = found.price {
-                return FetchedPrice(price: price, title: found.title, currency: found.currency, explicit: found.explicit)
+                return FetchedPrice(price: price, title: found.title, currency: found.currency,
+                                    explicit: found.explicit, image: resolveImage(found.image, base: url))
             }
             if page.isEmpty { throw firstError ?? FetchError(message: L.t("fetch.page_failed")) }
             throw FetchError(message: describeFailure(page))
@@ -137,6 +141,39 @@ enum PriceFetcher {
     private static let currencyMarks = #"(?:€|\$|£|EUR|USD|GBP|CHF)"#
 
     static func extract(from page: String) -> PriceResult {
+        var result: PriceResult = extractCore(from: page)
+        result.image = findImage(in: page)
+        return result
+    }
+
+    /// Adresse de la photo du produit (og:image, twitter:image ou données structurées).
+    static func findImage(in page: String) -> String? {
+        let patterns: [String] = [
+            #"<meta[^>]+property=["']og:image(?::secure_url)?["'][^>]*?content=["']([^"']+)["']"#,
+            #"<meta[^>]+content=["']([^"']+)["'][^>]*?property=["']og:image(?::secure_url)?["']"#,
+            #"<meta[^>]+name=["']twitter:image(?::src)?["'][^>]*?content=["']([^"']+)["']"#,
+            #""image"\s*:\s*"([^"]+)""#,
+            #""image"\s*:\s*\[\s*"([^"]+)""#,
+            #""image"\s*:\s*\{[^}]*?"url"\s*:\s*"([^"]+)""#
+        ]
+        for pattern in patterns {
+            for m in matches(pattern, in: page) {
+                let raw: String = unescape(m[1]).replacingOccurrences(of: "\\/", with: "/")
+                if raw.hasPrefix("http") || raw.hasPrefix("//") || raw.hasPrefix("/") { return raw }
+            }
+        }
+        return nil
+    }
+
+    /// Rend l'adresse de la photo complète (et en https).
+    static func resolveImage(_ raw: String?, base: URL) -> String? {
+        guard let raw = raw, !raw.isEmpty, let url = URL(string: raw, relativeTo: base) else { return nil }
+        var text: String = url.absoluteURL.absoluteString
+        if text.hasPrefix("http://") { text = "https://" + text.dropFirst("http://".count) }
+        return text
+    }
+
+    private static func extractCore(from page: String) -> PriceResult {
         var title: String?
         if let m = matches(#"<meta[^>]+property="og:title"[^>]+content="([^"]+)""#, in: page).first {
             title = unescape(m[1])

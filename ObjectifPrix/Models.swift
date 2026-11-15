@@ -38,6 +38,7 @@ struct Goal: Codable, Identifiable, Hashable {
     var alertedPrice: Double?
     var history: [PricePoint] = []
     var log: [MoneyEntry] = []
+    var imageURL: String?     // photo du produit (lue sur la page)
     var currency: String?     // devise de l'objectif (nil = devise par défaut)
     var updatedAt: Date?      // dernière modification, sert à la synchro
     var deleted: Bool?        // supprimé (la trace est gardée pour l'autre appareil)

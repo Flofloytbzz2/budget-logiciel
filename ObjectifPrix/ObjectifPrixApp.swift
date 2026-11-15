@@ -36,7 +36,9 @@ struct ObjectifPrixApp: App {
             if newPhase == .active {
                 Task {
                     await sync.syncNow()        // d'abord récupérer les changements de l'autre appareil
+                    SavingRules.shared.applyAuto(store: store)   // épargne automatique des mois écoulés
                     await store.refreshDue()    // puis relever les prix
+                    Reminders.reschedule(store: store)
                 }
             } else if newPhase == .background {
                 BackgroundRefresh.schedule()

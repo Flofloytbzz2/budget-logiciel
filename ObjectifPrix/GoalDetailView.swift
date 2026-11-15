@@ -25,7 +25,9 @@ struct GoalDetailView: View {
                         header(g)
                         heroCard(g)
                         moneyCard(g)
+                        BuyAdviceCard(goal: g)
                         PriceChart(goal: g)
+                        StatsCard(goal: g)
                         activityCard(g)
                     }
                     .padding(16)
@@ -86,18 +88,24 @@ struct GoalDetailView: View {
     // MARK: - Sections
 
     private func header(_ g: Goal) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(g.displayName)
-                .font(AppFont.f(28, .heavy))
-                .foregroundStyle(Theme.text)
-            if let error = g.lastError {
-                Text(L.f("detail.last_failed", error))
-                    .font(AppFont.f(13))
-                    .foregroundStyle(Theme.bad)
-            } else {
-                Text(subtitle(g))
-                    .font(AppFont.f(13))
-                    .foregroundStyle(Theme.muted)
+        HStack(alignment: .center, spacing: 14) {
+            if g.imageURL != nil {
+                ProductImage(urlString: g.imageURL, size: 72)
+            }
+            VStack(alignment: .leading, spacing: 4) {
+                Text(g.displayName)
+                    .font(AppFont.f(g.imageURL != nil ? 22 : 28, .heavy))
+                    .foregroundStyle(Theme.text)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let error = g.lastError {
+                    Text(L.f("detail.last_failed", error))
+                        .font(AppFont.f(13))
+                        .foregroundStyle(Theme.bad)
+                } else {
+                    Text(subtitle(g))
+                        .font(AppFont.f(13))
+                        .foregroundStyle(Theme.muted)
+                }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -247,7 +255,14 @@ struct GoalDetailView: View {
         Haptics.tap()
 
         let after = store.goal(goalID)?.progress ?? 0
-        if before < 1 && after >= 1 && Prefs.confetti {
+        var crossed: Double?
+        for step in Goal.milestones where before < step - 0.0005 && after >= step - 0.0005 {
+            crossed = step
+        }
+        if let step = crossed, step < 1 {
+            show(L.f("milestone.reached", String(Int(step * 100))))
+        }
+        if crossed != nil && Prefs.confetti {
             Haptics.success()
             let id = UUID()
             confettiID = id

@@ -83,11 +83,17 @@ struct GoalCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(goal.displayName)
-                    .font(AppFont.f(18, .bold))
-                    .foregroundStyle(Theme.text)
-                    .lineLimit(2)
+            HStack(alignment: .center, spacing: 12) {
+                if goal.imageURL != nil {
+                    ProductImage(urlString: goal.imageURL, size: 52)
+                }
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(goal.displayName)
+                        .font(AppFont.f(18, .bold))
+                        .foregroundStyle(Theme.text)
+                        .lineLimit(2)
+                    BuyBadge(goal: goal)
+                }
                 Spacer()
                 Text("\(Int(goal.progress * 100)) %")
                     .font(AppFont.f(18, .heavy))

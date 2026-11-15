@@ -26,6 +26,7 @@ struct WireGoal: Codable {
     var history: [WirePoint]
     var log: [WireEntry]
     var currency: String?
+    var image: String?
     var updatedAt: String
     var deleted: Bool
 }
@@ -99,6 +100,7 @@ extension Goal {
             history: sortedHistory.map { WirePoint(t: Iso.string($0.date), price: $0.price) },
             log: log.map { WireEntry(t: Iso.string($0.date), amount: $0.amount, note: $0.note) },
             currency: currency,
+            image: imageURL,
             updatedAt: Iso.string(stamp),
             deleted: isDeleted)
     }
@@ -115,6 +117,7 @@ extension Goal {
             .sorted { $0.date < $1.date }
         log = w.log.compactMap { e in Iso.date(e.t).map { MoneyEntry(date: $0, amount: e.amount, note: e.note) } }
         currency = Currencies.normalize(w.currency) ?? "EUR"
+        imageURL = w.image
         updatedAt = Iso.date(w.updatedAt) ?? Date.distantPast
         deleted = w.deleted
     }

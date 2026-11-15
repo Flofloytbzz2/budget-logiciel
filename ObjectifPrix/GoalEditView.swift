@@ -13,6 +13,9 @@ struct GoalEditView: View {
     @State private var monthly = ""
     @State private var alert = ""
     @State private var currency = Prefs.defaultCurrency
+    @State private var saveMode: SavingMode = .off
+    @State private var saveAmount = ""
+    @State private var saveDay = 1
     @State private var error = ""
     @State private var loaded = false
     @State private var confirmDelete = false
@@ -76,6 +79,34 @@ struct GoalEditView: View {
                 }
                 .listRowBackground(Theme.panel)
 
+                Section {
+                    Picker(L.t("save.mode"), selection: $saveMode) {
+                        ForEach(SavingMode.allCases) { mode in
+                            Text(L.t(mode.labelKey)).tag(mode)
+                        }
+                    }
+                    if saveMode != .off {
+                        TextField(L.t("save.amount_ph"), text: $saveAmount)
+                            .keyboardType(.decimalPad)
+                    }
+                    if saveMode == .monthly || saveMode == .auto {
+                        Picker(L.t("save.day"), selection: $saveDay) {
+                            ForEach(1...28, id: \.self) { day in
+                                Text(String(day)).tag(day)
+                            }
+                        }
+                    }
+                } header: {
+                    Text(L.t("save.section"))
+                } footer: {
+                    if saveMode == .auto {
+                        Text(L.t("save.help_auto"))
+                    } else if saveMode != .off {
+                        Text(L.t("save.help_reminder"))
+                    }
+                }
+                .listRowBackground(Theme.panel)
+
                 if !error.isEmpty {
                     Section {
                         Text(error).foregroundStyle(Theme.bad)
@@ -134,6 +165,10 @@ struct GoalEditView: View {
         currency = g.cur
         monthly = g.monthly > 0 ? Fmt.plain(g.monthly) : ""
         alert = g.alertBelow > 0 ? Fmt.plain(g.alertBelow) : ""
+        let rule: SavingRule = SavingRules.shared.rule(for: id)
+        saveMode = rule.mode
+        saveAmount = rule.amount > 0 ? Fmt.plain(rule.amount) : ""
+        saveDay = min(max(rule.day, 1), 28)
     }
 
     private func save() {
@@ -155,9 +190,19 @@ struct GoalEditView: View {
             error = L.t("edit.err_empty")
             return
         }
+        guard let rawSave = Fmt.optionalAmount(saveAmount) else {
+            error = L.t("edit.err_amounts")
+            return
+        }
+        if saveMode == .auto && rawSave <= 0 {
+            error = L.t("err.save_amount")
+            return
+        }
+        let rule = SavingRule(mode: saveMode, amount: rawSave, day: saveDay, lastAuto: "")
 
         if let id = goalID {
             let changed = store.edit(id, name: cleanName, url: cleanURL, monthly: m, alert: a, currency: currency)
+            SavingRules.shared.set(rule, for: id)
             if changed && !cleanURL.isEmpty {
                 Task { _ = await store.refresh(id, manual: true) }
             }
@@ -165,11 +210,14 @@ struct GoalEditView: View {
             var goal = Goal(name: cleanName, url: cleanURL, monthly: m, alertBelow: a)
             goal.currency = currency
             store.add(goal)
+            SavingRules.shared.set(rule, for: goal.id)
             if !cleanURL.isEmpty {
                 let newID = goal.id
                 Task { _ = await store.refresh(newID, manual: true) }
             }
         }
+        if saveMode == .weekly || saveMode == .monthly { Notifier.requestPermission() }
+        Reminders.reschedule(store: store)
         dismiss()
     }
 }
