@@ -11,19 +11,15 @@ struct RingView: View {
 
     var body: some View {
         ZStack {
-            Circle().stroke(Theme.panel2, lineWidth: 18)
+            Circle().stroke(Theme.panel2, lineWidth: 10)
             Circle()
                 .trim(from: 0, to: CGFloat(min(max(shown, 0), 1)))
-                .stroke(
-                    AngularGradient(
-                        colors: reached ? [Theme.gold, Theme.accent, Theme.gold] : [Theme.violet, Theme.accent],
-                        center: .center),
-                    style: StrokeStyle(lineWidth: 18, lineCap: .round))
+                .stroke(reached ? Theme.gold : Theme.accent,
+                        style: StrokeStyle(lineWidth: 10, lineCap: .butt))
                 .rotationEffect(.degrees(-90))
-                .shadow(color: (reached ? Theme.gold : Theme.accent).opacity(0.35), radius: 10)
             VStack(spacing: 2) {
                 Text("\(Int(progress * 100)) %")
-                    .font(AppFont.f(38, .heavy))
+                    .font(AppFont.f(40, .bold))
                     .foregroundStyle(reached ? Theme.gold : Theme.text)
                 Text(L.t("ring.of_goal"))
                     .font(AppFont.f(13))
@@ -49,9 +45,8 @@ struct StatTile: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(label.uppercased())
-                .font(AppFont.f(10, .bold))
-                .tracking(1)
+            Text(label)
+                .font(AppFont.f(12, .medium))
                 .foregroundStyle(Theme.muted)
             Text(value)
                 .font(AppFont.f(20, .bold))
@@ -66,7 +61,7 @@ struct StatTile: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(14)
-        .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(Theme.panel2))
+        .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Theme.panel2))
     }
 }
 
@@ -81,7 +76,7 @@ struct ConfettiView: View {
         let rotation: Double
     }
 
-    private static let colors: [Color] = [Theme.accent, Theme.violet, Theme.gold, Theme.bad, .white]
+    private static let colors: [Color] = [Theme.accent, Theme.gold, Theme.bad, Theme.text]
     private let pieces: [Piece] = (0..<60).map { _ in
         Piece(x: CGFloat.random(in: -1...1),
               fall: CGFloat.random(in: 0.35...1),
@@ -165,12 +160,12 @@ struct PriceChart: View {
                          yStart: .value("Base", floorValue),
                          yEnd: .value("Prix", p.price))
                     .foregroundStyle(LinearGradient(
-                        colors: [Theme.accent.opacity(0.35), Theme.accent.opacity(0)],
+                        colors: [Theme.accent.opacity(0.16), Theme.accent.opacity(0)],
                         startPoint: .top, endPoint: .bottom))
                     .interpolationMethod(.monotone)
                 LineMark(x: .value("Date", p.date), y: .value("Prix", p.price))
                     .foregroundStyle(Theme.accent)
-                    .lineStyle(StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round))
+                    .lineStyle(StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
                     .interpolationMethod(.monotone)
                 PointMark(x: .value("Date", p.date), y: .value("Prix", p.price))
                     .foregroundStyle(Theme.accent)

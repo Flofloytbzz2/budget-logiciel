@@ -48,8 +48,8 @@ struct ThemeGrid: View {
 struct AccentRow: View {
     @EnvironmentObject var settings: Settings
     private let colors: [UInt32] = [
-        0x2DE2B1, 0x38BDF8, 0x6366F1, 0xC084FC, 0xF472B6,
-        0xFB7185, 0xFB923C, 0xFACC15, 0x4ADE80, 0xE2E8F0
+        0xD9A441, 0xD4825A, 0xC9605A, 0xB8749A, 0x8C86C9,
+        0x7FA8D6, 0x6DB3A6, 0x9DB88A, 0x2F6B4F, 0xA6A29B
     ]
     private let columns: [GridItem] = [GridItem(.adaptive(minimum: 38), spacing: 10)]
 
@@ -180,8 +180,7 @@ struct SettingsView: View {
                 .overlay(
                     GeometryReader { geo in
                         Capsule()
-                            .fill(LinearGradient(colors: [Theme.violet, Theme.accent],
-                                                 startPoint: .leading, endPoint: .trailing))
+                            .fill(Theme.accent)
                             .frame(width: geo.size.width * 0.62)
                     })
             Text(Fmt.money(184.5, settings.defaultCurrency) + " / " + Fmt.money(299, settings.defaultCurrency))

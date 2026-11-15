@@ -104,18 +104,12 @@ struct TutorialView: View {
 
     private func header(_ symbol: String, _ title: String, _ text: String) -> some View {
         VStack(spacing: 14) {
-            ZStack {
-                Circle()
-                    .fill(LinearGradient(colors: [Theme.violet, Theme.accent],
-                                         startPoint: .topLeading, endPoint: .bottomTrailing))
-                    .frame(width: 84, height: 84)
-                Image(systemName: symbol)
-                    .font(AppFont.f(36, .bold))
-                    .foregroundStyle(Theme.onAccent)
-            }
-            .padding(.top, 8)
+            Image(systemName: symbol)
+                .font(AppFont.f(34, .regular))
+                .foregroundStyle(Theme.accent)
+                .padding(.top, 8)
             Text(title)
-                .font(AppFont.f(28, .heavy))
+                .font(AppFont.f(30, .bold))
                 .foregroundStyle(Theme.text)
                 .multilineTextAlignment(.center)
             Text(text)

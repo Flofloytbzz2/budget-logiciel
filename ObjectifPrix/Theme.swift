@@ -19,7 +19,7 @@ enum Theme {
     static var text: Color { Color(hex: Prefs.palette.text) }
     static var muted: Color { Color(hex: Prefs.palette.muted) }
     static var accent: Color { Color(hex: Prefs.accentHex ?? Prefs.palette.accent) }
-    static var violet: Color { Color(hex: Prefs.palette.secondary) }
+    static var violet: Color { accent }
     static var gold: Color { Color(hex: Prefs.palette.gold) }
     static var bad: Color { Color(hex: Prefs.palette.bad) }
     static var onAccent: Color {
@@ -36,25 +36,20 @@ enum AppFont {
     static func f(_ size: CGFloat, _ weight: Font.Weight = .regular) -> Font {
         let design: Font.Design
         switch Prefs.fontStyle {
+        case .editorial: design = size >= 20 ? .serif : .default
         case .standard: design = .default
         case .rounded: design = .rounded
         case .serif: design = .serif
         case .mono: design = .monospaced
         }
-        return Font.system(size: size * CGFloat(Prefs.fontScale), weight: weight, design: design)
+        let adjusted: Font.Weight = (design == .serif && weight == .heavy) ? .bold : weight
+        return Font.system(size: size * CGFloat(Prefs.fontScale), weight: adjusted, design: design)
     }
 }
 
 struct AppBackground: View {
     var body: some View {
-        ZStack {
-            Theme.bg
-            RadialGradient(colors: [Theme.violet.opacity(Prefs.palette.isLight ? 0.10 : 0.22), .clear],
-                           center: .topLeading, startRadius: 10, endRadius: 420)
-            RadialGradient(colors: [Theme.accent.opacity(Prefs.palette.isLight ? 0.08 : 0.12), .clear],
-                           center: .bottomTrailing, startRadius: 10, endRadius: 380)
-        }
-        .ignoresSafeArea()
+        Theme.bg.ignoresSafeArea()
     }
 }
 
@@ -66,11 +61,11 @@ struct CardModifier: ViewModifier {
             .padding(pad)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .fill(Theme.panel)
                     .overlay(
-                        RoundedRectangle(cornerRadius: 24, style: .continuous)
-                            .stroke(Theme.border, lineWidth: 1)))
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .stroke(Theme.border.opacity(0.7), lineWidth: 0.5)))
     }
 }
 
@@ -86,13 +81,12 @@ struct PillButtonStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(AppFont.f(16, .bold))
+            .font(AppFont.f(16, .semibold))
             .foregroundStyle(foreground)
-            .padding(.vertical, Prefs.compact ? 10 : 14)
+            .padding(.vertical, Prefs.compact ? 10 : 13)
             .frame(maxWidth: .infinity)
-            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(fill))
-            .opacity(configuration.isPressed ? 0.75 : 1)
-            .scaleEffect(configuration.isPressed ? 0.98 : 1)
+            .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(fill))
+            .opacity(configuration.isPressed ? 0.7 : 1)
     }
 }
 
@@ -100,9 +94,8 @@ struct SectionLabel: View {
     let text: String
     init(_ text: String) { self.text = text }
     var body: some View {
-        Text(text.uppercased())
-            .font(AppFont.f(11, .bold))
-            .tracking(1)
+        Text(text)
+            .font(AppFont.f(13, .semibold))
             .foregroundStyle(Theme.muted)
     }
 }

@@ -104,13 +104,11 @@ struct GoalCard: View {
                 ZStack(alignment: .leading) {
                     Capsule().fill(Theme.panel2)
                     Capsule()
-                        .fill(LinearGradient(
-                            colors: goal.progress >= 1 ? [Theme.gold, Theme.accent] : [Theme.violet, Theme.accent],
-                            startPoint: .leading, endPoint: .trailing))
-                        .frame(width: max(geo.size.width * goal.progress, goal.progress > 0 ? 8 : 0))
+                        .fill(goal.progress >= 1 ? Theme.gold : Theme.accent)
+                        .frame(width: max(geo.size.width * goal.progress, goal.progress > 0 ? 6 : 0))
                 }
             }
-            .frame(height: 8)
+            .frame(height: 5)
 
             HStack {
                 if let price = goal.price {
@@ -135,10 +133,9 @@ struct EmptyState: View {
     var body: some View {
         VStack(spacing: 14) {
             ZStack {
-                Circle().stroke(Theme.panel2, lineWidth: 14)
+                Circle().stroke(Theme.panel2, lineWidth: 8)
                 Circle().trim(from: 0, to: 0.62)
-                    .stroke(AngularGradient(colors: [Theme.violet, Theme.accent], center: .center),
-                            style: StrokeStyle(lineWidth: 14, lineCap: .round))
+                    .stroke(Theme.accent, style: StrokeStyle(lineWidth: 8, lineCap: .butt))
                     .rotationEffect(.degrees(-90))
             }
             .frame(width: 110, height: 110)

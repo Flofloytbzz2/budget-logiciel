@@ -72,69 +72,52 @@ enum L {
 // MARK: - Choix proposés dans les réglages
 
 enum ThemeID: String, CaseIterable, Identifiable {
-    case night, ocean, aurora, forest, ember, amoled, light
+    case graphite, ink, sage, clay, amoled, paper, mist
 
     var id: String { rawValue }
 
-    var labelKey: String {
-        switch self {
-        case .night: return "theme.night"
-        case .ocean: return "theme.ocean"
-        case .aurora: return "theme.aurora"
-        case .forest: return "theme.forest"
-        case .ember: return "theme.ember"
-        case .amoled: return "theme.amoled"
-        case .light: return "theme.light"
-        }
-    }
+    var labelKey: String { "theme." + rawValue }
 
     var palette: Palette {
         switch self {
-        case .night:
-            return Palette(bg: 0x0A0E1A, panel: 0x121829, panel2: 0x1A2340, input: 0x0D1322, border: 0x26304F,
-                           text: 0xEAF0FF, muted: 0x8390B0, accent: 0x2DE2B1, secondary: 0x7C5CFF,
-                           gold: 0xFFC857, bad: 0xFF5C7A, onAccent: 0x04281F, isLight: false)
-        case .ocean:
-            return Palette(bg: 0x06121F, panel: 0x0C1D31, panel2: 0x12294A, input: 0x08182A, border: 0x1E3A5F,
-                           text: 0xE8F4FF, muted: 0x7FA0BF, accent: 0x38BDF8, secondary: 0x6366F1,
-                           gold: 0xFFC857, bad: 0xFF6B81, onAccent: 0x03233A, isLight: false)
-        case .aurora:
-            return Palette(bg: 0x0B0A1E, panel: 0x151233, panel2: 0x201B4A, input: 0x0F0D28, border: 0x31296B,
-                           text: 0xF1EEFF, muted: 0x9A93C8, accent: 0xC084FC, secondary: 0x2DE2B1,
-                           gold: 0xFFC857, bad: 0xFF5C7A, onAccent: 0x2A0F45, isLight: false)
-        case .forest:
-            return Palette(bg: 0x08130E, panel: 0x0F2018, panel2: 0x16301F, input: 0x0B1913, border: 0x244632,
-                           text: 0xE8F7EE, muted: 0x7FA690, accent: 0x4ADE80, secondary: 0xA3E635,
-                           gold: 0xFFC857, bad: 0xFF6B6B, onAccent: 0x052E16, isLight: false)
-        case .ember:
-            return Palette(bg: 0x160A08, panel: 0x221210, panel2: 0x341A16, input: 0x1A0E0B, border: 0x4A2620,
-                           text: 0xFFEFE8, muted: 0xB58B80, accent: 0xFB923C, secondary: 0xF43F5E,
-                           gold: 0xFFD166, bad: 0xFF5C7A, onAccent: 0x2B1200, isLight: false)
+        case .graphite:
+            return Palette(bg: 0x141414, panel: 0x1C1C1D, panel2: 0x262628, input: 0x181819, border: 0x303033,
+                           text: 0xF2F0EB, muted: 0x8E8B85, accent: 0xD9A441, secondary: 0xD9A441,
+                           gold: 0xD9A441, bad: 0xE0685A, onAccent: 0x1A1405, isLight: false)
+        case .ink:
+            return Palette(bg: 0x0F1218, panel: 0x161A22, panel2: 0x1F2430, input: 0x12161D, border: 0x2A303D,
+                           text: 0xE9EBF0, muted: 0x848B9A, accent: 0x7FA8D6, secondary: 0x7FA8D6,
+                           gold: 0xD2B06A, bad: 0xDD6F6F, onAccent: 0x0B1522, isLight: false)
+        case .sage:
+            return Palette(bg: 0x121512, panel: 0x191D19, panel2: 0x232923, input: 0x151815, border: 0x2D342D,
+                           text: 0xECEFE8, muted: 0x8A9487, accent: 0x9DB88A, secondary: 0x9DB88A,
+                           gold: 0xCDB46A, bad: 0xDA7468, onAccent: 0x121A0F, isLight: false)
+        case .clay:
+            return Palette(bg: 0x171210, panel: 0x1F1815, panel2: 0x2A211D, input: 0x1B1512, border: 0x372C26,
+                           text: 0xF3ECE6, muted: 0x9A8B80, accent: 0xD4825A, secondary: 0xD4825A,
+                           gold: 0xD9A441, bad: 0xD9645A, onAccent: 0x2A1208, isLight: false)
         case .amoled:
-            return Palette(bg: 0x000000, panel: 0x0A0A0A, panel2: 0x151515, input: 0x0A0A0A, border: 0x262626,
-                           text: 0xFFFFFF, muted: 0x8A8A8A, accent: 0x2DE2B1, secondary: 0x7C5CFF,
-                           gold: 0xFFC857, bad: 0xFF5C7A, onAccent: 0x04281F, isLight: false)
-        case .light:
-            return Palette(bg: 0xF3F5FA, panel: 0xFFFFFF, panel2: 0xE8ECF6, input: 0xF0F3FA, border: 0xD5DBEA,
-                           text: 0x0F172A, muted: 0x5B6784, accent: 0x0EA37F, secondary: 0x6D4AFF,
-                           gold: 0xD99A00, bad: 0xE11D48, onAccent: 0xFFFFFF, isLight: true)
+            return Palette(bg: 0x000000, panel: 0x0B0B0B, panel2: 0x171717, input: 0x0B0B0B, border: 0x262626,
+                           text: 0xFFFFFF, muted: 0x8A8A8A, accent: 0xD9A441, secondary: 0xD9A441,
+                           gold: 0xD9A441, bad: 0xE0685A, onAccent: 0x1A1405, isLight: false)
+        case .paper:
+            return Palette(bg: 0xF4F1EA, panel: 0xFBFAF6, panel2: 0xECE8DE, input: 0xF0EDE4, border: 0xDDD8CB,
+                           text: 0x1F1D1A, muted: 0x77726A, accent: 0x2F6B4F, secondary: 0x2F6B4F,
+                           gold: 0xA8741A, bad: 0xB8402F, onAccent: 0xFFFFFF, isLight: true)
+        case .mist:
+            return Palette(bg: 0xEEF1F3, panel: 0xFAFBFC, panel2: 0xE3E8EB, input: 0xEAEEF0, border: 0xD3DADF,
+                           text: 0x16202A, muted: 0x63717D, accent: 0x1F6F8B, secondary: 0x1F6F8B,
+                           gold: 0xA8741A, bad: 0xB8402F, onAccent: 0xFFFFFF, isLight: true)
         }
     }
 }
 
 enum FontStyle: String, CaseIterable, Identifiable {
-    case standard, rounded, serif, mono
+    case editorial, standard, rounded, serif, mono
 
     var id: String { rawValue }
 
-    var labelKey: String {
-        switch self {
-        case .standard: return "font.standard"
-        case .rounded: return "font.rounded"
-        case .serif: return "font.serif"
-        case .mono: return "font.mono"
-        }
-    }
+    var labelKey: String { "font." + rawValue }
 }
 
 enum NumberFormatChoice: String, CaseIterable, Identifiable {
@@ -221,9 +204,9 @@ struct Palette {
 }
 
 enum Prefs {
-    static var palette: Palette = ThemeID.night.palette
+    static var palette: Palette = ThemeID.graphite.palette
     static var accentHex: UInt32? = nil
-    static var fontStyle: FontStyle = .rounded
+    static var fontStyle: FontStyle = .editorial
     static var fontScale: Double = 1.0
     static var compact: Bool = false
     static var animations: Bool = true
@@ -281,13 +264,13 @@ final class Settings: ObservableObject {
     private init() {
         let d = UserDefaults.standard
         language = AppLanguage(rawValue: d.string(forKey: Settings.key("language")) ?? "") ?? .auto
-        theme = ThemeID(rawValue: d.string(forKey: Settings.key("theme")) ?? "") ?? .night
-        if let value = d.object(forKey: Settings.key("accent")) as? Int {
+        theme = ThemeID(rawValue: d.string(forKey: Settings.key("theme2")) ?? "") ?? .graphite
+        if let value = d.object(forKey: Settings.key("accent2")) as? Int {
             accentHex = UInt32(truncatingIfNeeded: value)
         } else {
             accentHex = nil
         }
-        fontStyle = FontStyle(rawValue: d.string(forKey: Settings.key("font")) ?? "") ?? .rounded
+        fontStyle = FontStyle(rawValue: d.string(forKey: Settings.key("font2")) ?? "") ?? .editorial
         let scale: Double = d.object(forKey: Settings.key("fontScale")) as? Double ?? 1.0
         fontScale = min(max(scale, 0.85), 1.4)
         compact = d.object(forKey: Settings.key("compact")) as? Bool ?? false
@@ -337,13 +320,13 @@ final class Settings: ObservableObject {
         revision += 1
         let d = UserDefaults.standard
         d.set(language.rawValue, forKey: Settings.key("language"))
-        d.set(theme.rawValue, forKey: Settings.key("theme"))
+        d.set(theme.rawValue, forKey: Settings.key("theme2"))
         if let hex = accentHex {
-            d.set(Int(hex), forKey: Settings.key("accent"))
+            d.set(Int(hex), forKey: Settings.key("accent2"))
         } else {
-            d.removeObject(forKey: Settings.key("accent"))
+            d.removeObject(forKey: Settings.key("accent2"))
         }
-        d.set(fontStyle.rawValue, forKey: Settings.key("font"))
+        d.set(fontStyle.rawValue, forKey: Settings.key("font2"))
         d.set(fontScale, forKey: Settings.key("fontScale"))
         d.set(compact, forKey: Settings.key("compact"))
         d.set(defaultCurrency, forKey: Settings.key("currency"))
@@ -362,9 +345,9 @@ final class Settings: ObservableObject {
     /// Remet les réglages d'origine (le tutoriel déjà vu reste vu).
     func resetAll() {
         language = .auto
-        theme = .night
+        theme = .graphite
         accentHex = nil
-        fontStyle = .rounded
+        fontStyle = .editorial
         fontScale = 1.0
         compact = false
         defaultCurrency = Currencies.guessFromLocale()

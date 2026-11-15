@@ -125,18 +125,16 @@ struct BuyAdviceCard: View {
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
                     Capsule()
-                        .fill(LinearGradient(colors: [Theme.accent, Theme.gold, Theme.bad],
-                                             startPoint: .leading, endPoint: .trailing))
-                        .frame(height: 8)
+                        .fill(Theme.panel2)
+                        .frame(height: 4)
                     Circle()
-                        .fill(Theme.text)
-                        .frame(width: 18, height: 18)
-                        .overlay(Circle().stroke(Theme.bg, lineWidth: 3))
-                        .offset(x: max(0, min(geo.size.width - 18, geo.size.width * advice.position - 9)))
+                        .fill(color(advice.verdict))
+                        .frame(width: 14, height: 14)
+                        .offset(x: max(0, min(geo.size.width - 14, geo.size.width * advice.position - 7)))
                 }
-                .frame(height: 18)
+                .frame(height: 14)
             }
-            .frame(height: 18)
+            .frame(height: 14)
             HStack {
                 Text(L.t("advice.min") + " " + goal.money(advice.low))
                 Spacer()
