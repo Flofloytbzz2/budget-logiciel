@@ -74,7 +74,7 @@ object Store {
         }
     }
 
-    private fun setGoals(list: List<Goal>) {
+    private fun replaceGoals(list: List<Goal>) {
         goals = list
         save()
     }
@@ -84,7 +84,7 @@ object Store {
     fun goal(id: String): Goal? = goals.firstOrNull { it.id == id && !it.deleted }
 
     fun add(goal: Goal) {
-        setGoals(goals + goal)
+        replaceGoals(goals + goal)
         SyncService.scheduleSync()
     }
 
@@ -96,7 +96,7 @@ object Store {
         if (touch) g = g.touched()
         val list = goals.toMutableList()
         list[index] = g
-        setGoals(list)
+        replaceGoals(list)
         if (touch) SyncService.scheduleSync()
     }
 
@@ -106,7 +106,7 @@ object Store {
     }
 
     /** Remplace les objectifs par le résultat d'une fusion (sans relancer d'envoi). */
-    fun applyRemote(merged: List<Goal>) = setGoals(merged)
+    fun applyRemote(merged: List<Goal>) = replaceGoals(merged)
 
     /** Retourne true si le lien a changé. */
     fun edit(id: String, name: String, url: String, monthly: Double, alert: Double, currency: String): Boolean {
@@ -131,7 +131,7 @@ object Store {
     fun restore(text: String): Int? {
         val incoming = Wire.docFromString(text)
         if (incoming == null || incoming.isEmpty()) return null
-        setGoals(SyncMerge.merge(goals, incoming))
+        replaceGoals(SyncMerge.merge(goals, incoming))
         SyncService.scheduleSync()
         return incoming.count { !it.deleted }
     }
