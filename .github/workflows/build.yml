@@ -2,7 +2,9 @@ name: Construire l'IPA
 
 on:
   push:
-    branches-ignore: [build-log]
+    branches-ignore: [build-log, build-log-android]
+    paths-ignore:
+      - "android/**"
   workflow_dispatch:
 
 permissions:
